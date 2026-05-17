@@ -1,0 +1,721 @@
+Persian & Arabic Transliteration Expert Codebase Export
+
+=========================================
+FILE: /package.json
+=========================================
+{
+  "name": "arabic-transcription-converter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react-dom": "^19.2.3",
+    "react": "^19.2.3",
+    "lucide-react": "^0.561.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
+
+=========================================
+FILE: /tsconfig.json
+=========================================
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+
+=========================================
+FILE: /vite.config.ts
+=========================================
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, '.', '');
+    return {
+      server: {
+        port: 3000,
+        host: '0.0.0.0',
+      },
+      plugins: [react()],
+      define: {
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '.'),
+        }
+      }
+    };
+});
+
+=========================================
+FILE: /index.html
+=========================================
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Arabic Transcription Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .font-serif-text {
+        font-family: 'Merriweather', serif;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
+
+=========================================
+FILE: /index.tsx
+=========================================
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+=========================================
+FILE: /App.tsx
+=========================================
+import React, { useState, useEffect } from 'react';
+import { Copy, Trash2, CheckCircle2, Info } from 'lucide-react';
+import { Header } from './components/Header';
+import { TextArea } from './components/ui/TextArea';
+import { Button } from './components/ui/Button';
+import { convertLocToDin, convertDinToLoc } from './utils/converter';
+import { convertPersianLocToDin, convertPersianDinToLoc } from './utils/persianConverter';
+
+type Direction = 'LOC_TO_DIN' | 'DIN_TO_LOC';
+type Language = 'Arabic' | 'Persian';
+
+const App: React.FC = () => {
+  const [input, setInput] = useState<string>('');
+  const [output, setOutput] = useState<string>('');
+  const [copied, setCopied] = useState<boolean>(false);
+  const [direction, setDirection] = useState<Direction>('LOC_TO_DIN');
+  const [language, setLanguage] = useState<Language>('Arabic');
+
+  useEffect(() => {
+    let result = '';
+    if (language === 'Arabic') {
+      result = direction === 'LOC_TO_DIN' 
+        ? convertLocToDin(input)
+        : convertDinToLoc(input);
+    } else {
+      result = direction === 'LOC_TO_DIN'
+        ? convertPersianLocToDin(input)
+        : convertPersianDinToLoc(input);
+    }
+    
+    setOutput(result);
+  }, [input, direction, language]);
+
+  const handleCopy = async () => {
+    if (!output) return;
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleClear = () => {
+    setInput('');
+  };
+
+  const handleTabChange = (newDirection: Direction) => {
+    setDirection(newDirection);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Header direction={direction} language={language} />
+      
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Language and Direction Selectors */}
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
+          <div className="bg-slate-200 p-1 rounded-xl flex space-x-1 shadow-inner">
+            <button
+              onClick={() => setLanguage('Persian')}
+              className={`
+                px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200
+                ${language === 'Persian'
+                  ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }
+              `}
+            >
+              Persian
+            </button>
+            <button
+              onClick={() => setLanguage('Arabic')}
+              className={`
+                px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200
+                ${language === 'Arabic'
+                  ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }
+              `}
+            >
+              Arabic
+            </button>
+          </div>
+
+          <div className="bg-slate-200 p-1 rounded-xl flex space-x-1 shadow-inner">
+            <button
+              onClick={() => handleTabChange('LOC_TO_DIN')}
+              className={`
+                px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200
+                ${direction === 'LOC_TO_DIN'
+                  ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }
+              `}
+            >
+              LOC → DIN
+            </button>
+            <button
+              onClick={() => handleTabChange('DIN_TO_LOC')}
+              className={`
+                px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200
+                ${direction === 'DIN_TO_LOC'
+                  ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }
+              `}
+            >
+              DIN → LOC
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Input Section */}
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 flex flex-col min-h-[500px]">
+            <div className="flex justify-between items-center mb-4">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                Input Source ({language})
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClear}
+                disabled={!input}
+                className="text-xs hover:text-red-600"
+                icon={Trash2}
+              >
+                Clear
+              </Button>
+            </div>
+            
+            <TextArea 
+              label={direction === 'LOC_TO_DIN' ? "Library of Congress (LOC)" : "DIN 31635 Standard"}
+              placeholder={direction === 'LOC_TO_DIN' 
+                ? (language === 'Persian' ? "e.g., 'khānah-i buzurg', 'vatan'" : "e.g., 'Shirwānī, Ibrahīm ibn Ḥasa al-'")
+                : (language === 'Persian' ? "e.g., 'ḫānah-i buzurg', 'watan'" : "e.g., 'Širwānī, Ibrāhīm Ibn-Ḥasa aš-'") }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="flex-1"
+            />
+            
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                {direction === 'DIN_TO_LOC' && language === 'Arabic' && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 text-xs font-medium">
+                    <Info className="w-3.5 h-3.5" />
+                    <span>Pro Tip: Use <code className="bg-indigo-100 px-1 rounded">Ibnn</code> for lowercase <code className="bg-indigo-100 px-1 rounded">ibn</code> in LOC.</span>
+                  </div>
+                )}
+                <div className="flex-1 text-right">
+                   <span className="text-xs text-slate-400">{input.length} characters</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Transcription Output Section */}
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 flex flex-col min-h-[500px]">
+            <div className="flex justify-between items-center mb-4">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                Transcription Result
+              </span>
+              <Button 
+                variant={copied ? 'primary' : 'secondary'}
+                onClick={handleCopy}
+                disabled={!output}
+                icon={copied ? CheckCircle2 : Copy}
+                className={copied ? "bg-green-600 hover:bg-green-700 border-transparent" : ""}
+              >
+                {copied ? 'Copied!' : 'Copy Result'}
+              </Button>
+            </div>
+
+            <TextArea 
+              label={direction === 'LOC_TO_DIN' ? "DIN 31635 Standard" : "Library of Congress (LOC)"}
+              value={output}
+              isReadOnly
+              placeholder="Conversion result..."
+              className="flex-1"
+            />
+             
+            <div className="mt-4 flex justify-end">
+              <span className="text-xs text-slate-400">{output.length} characters</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center text-slate-500 text-sm max-w-2xl mx-auto space-y-4">
+          <p>
+            {direction === 'LOC_TO_DIN' 
+              ? `Converting from Library of Congress (LOC) format to DIN 31635 for ${language}.` 
+              : `Converting from DIN 31635 standard back to Library of Congress (LOC) for ${language}.`}
+          </p>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-left shadow-sm">
+            <h3 className="text-slate-800 font-semibold flex items-center gap-2 mb-2">
+              <Info className="w-4 h-4 text-indigo-600" />
+              Expert Note
+            </h3>
+            <p className="text-xs leading-relaxed">
+              This tool implements the transliteration rules defined in <strong>DIN 31635:2011-07</strong> and the <strong>Library of Congress (LOC) Persian Romanization</strong> guidelines. 
+              {language === 'Persian' && " It handles character mappings such as 'ḫ' (DIN) ⇌ 'kh' (LOC), 'w' (DIN) ⇌ 'v' (LOC), and diphthongs like 'au' (DIN) ⇌ 'aw' (LOC)."}
+              {language === 'Arabic' && " It handles article assimilation (al- ⇌ as-s), sun letters, and special word forms like 'Ibn' and 'Abd'."}
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default App;
+
+=========================================
+FILE: /components/Header.tsx
+=========================================
+import React from 'react';
+import { Languages, Info, Download } from 'lucide-react';
+import { generatePythonScript, generateReversePythonScript } from '../utils/scriptGenerator';
+import { Button } from './ui/Button';
+
+interface HeaderProps {
+  direction?: 'LOC_TO_DIN' | 'DIN_TO_LOC';
+  language: 'Arabic' | 'Persian';
+}
+
+export const Header: React.FC<HeaderProps> = ({ direction = 'LOC_TO_DIN', language }) => {
+  const handleDownloadScript = () => {
+    const isReverse = direction === 'DIN_TO_LOC';
+    const scriptContent = isReverse ? generateReversePythonScript() : generatePythonScript();
+    const filename = isReverse ? 'din_to_loc_converter.py' : 'loc_to_din_converter.py';
+    
+    const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+              <Languages className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                {language} Transliteration Expert
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">Library of Congress (LOC) ⇌ DIN 31635</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="secondary" 
+              size="sm"
+              icon={Download}
+              onClick={handleDownloadScript}
+              className="hidden sm:flex"
+            >
+              Download Py Script
+            </Button>
+            <a 
+              href="#" 
+              className="text-sm text-slate-500 hover:text-indigo-600 transition-colors hidden sm:flex items-center gap-1"
+              title="About DIN Standard"
+            >
+              <Info className="w-4 h-4" />
+              <span>Reference</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+=========================================
+FILE: /components/ui/Button.tsx
+=========================================
+import React from 'react';
+import { LucideIcon } from 'lucide-react';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  icon?: LucideIcon;
+}
+
+export const Button: React.FC<ButtonProps> = ({ 
+  children, 
+  variant = 'primary', 
+  icon: Icon,
+  className = '',
+  ...props 
+}) => {
+  const baseStyles = "inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+  
+  const variants = {
+    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm",
+    secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus:ring-indigo-500 shadow-sm",
+    ghost: "text-slate-600 hover:bg-slate-100 focus:ring-slate-500"
+  };
+
+  return (
+    <button 
+      className={`${baseStyles} ${variants[variant]} ${className}`}
+      {...props}
+    >
+      {Icon && <Icon className={`w-4 h-4 ${children ? 'mr-2' : ''}`} />}
+      {children}
+    </button>
+  );
+};
+
+=========================================
+FILE: /components/ui/TextArea.tsx
+=========================================
+import React from 'react';
+
+interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label: string;
+  isReadOnly?: boolean;
+}
+
+export const TextArea: React.FC<TextAreaProps> = ({ 
+  label, 
+  value, 
+  isReadOnly = false, 
+  className = '',
+  ...props 
+}) => {
+  return (
+    <div className="flex flex-col h-full">
+      <label className="block text-sm font-semibold text-slate-700 mb-2">
+        {label}
+      </label>
+      <textarea
+        className={`
+          flex-1 w-full p-4 rounded-xl border transition-all resize-none
+          font-serif-text text-lg
+          leading-relaxed
+          focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none
+          ${isReadOnly 
+            ? 'bg-slate-50 border-slate-200 text-slate-800' 
+            : 'bg-white border-slate-300 text-slate-900 shadow-sm placeholder:text-slate-400'
+          }
+          ${className}
+        `}
+        value={value}
+        readOnly={isReadOnly}
+        spellCheck={false}
+        {...props}
+      />
+    </div>
+  );
+};
+
+=========================================
+FILE: /utils/converter.ts
+=========================================
+import {
+  SPECIAL_WORDS,
+  COMBI_AIU,
+  SPECIALS,
+  PREPOSITIONS_AL,
+  COMBI_LONG_VOWELS,
+  ARTICLE_AL,
+  ALPHABET_MAPPING,
+  FINAL_ADJUSTMENTS,
+  GENERIC_ARTICLE_CONTRACTION,
+  POST_PROCESSING_CORRECTIONS,
+  SUN_LETTERS_MAP
+} from './mappings';
+
+export const convertLocToDin = (input: string): string => {
+  if (!input) return "";
+  let text = " " + input.trim() + " ";
+  ALPHABET_MAPPING.forEach(([key, value]) => { text = text.split(key).join(value); });
+  SPECIAL_WORDS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  text = text.replace(/([ʿʾ]?(?!Rasūl)\p{Lu}\S*)\s+Allāh/gu, "$1allāh");
+  FINAL_ADJUSTMENTS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  if (text.endsWith(" al- ")) {
+    const firstWordMatch = text.trim().match(/^[^\s,]+/);
+    if (firstWordMatch) {
+      const firstChar = firstWordMatch[0][0].toLowerCase();
+      const assimilation = SUN_LETTERS_MAP[firstChar];
+      if (assimilation) { text = text.substring(0, text.length - 5) + " " + assimilation + " "; }
+    }
+  }
+  SPECIALS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  text = text.replace(/((?:[Aa]l|[Ll]il|[Bb]il|[Kk]al|[Ww]al|bi-al-|ka-al-|wa-al-|[ʿʾ][Aa]l)-\S+ī)(\s+|-)([Aa]l-)/g, (match, p1, p2, p3) => {
+    return p1 + p2 + "@@@" + p3 + "@@@";
+  });
+  COMBI_AIU.forEach(([key, value]) => { text = text.split(key).join(value); });
+  POST_PROCESSING_CORRECTIONS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  PREPOSITIONS_AL.forEach(([key, value]) => { text = text.split(key).join(value); });
+  COMBI_LONG_VOWELS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  GENERIC_ARTICLE_CONTRACTION.forEach(([key, value]) => { text = text.split(key).join(value); });
+  ARTICLE_AL.forEach(([key, value]) => { text = text.split(key).join(value); });
+  text = text.split("@@@al-@@@").join("al-");
+  text = text.split("@@@Al-@@@").join("Al-");
+  text = text.replace(/(?<![Aa]ll\u0101|ll\u0101)ah(?![a-z\u00C0-\u017F\u1E00-\u1EFF\-])/gi, "a");
+  return text.trim();
+};
+
+export const convertDinToLoc = (input: string): string => {
+  if (!input) return "";
+  let text = " " + input.trim() + " ";
+  text = text.replace(/(\S+)allāh/g, "$1 Allāh");
+  const applyReverse = (mapping: string[][]) => { [...mapping].reverse().forEach(([locKey, dinValue]) => { text = text.split(dinValue).join(locKey); }); };
+  applyReverse(ARTICLE_AL);
+  text = text.replace(/ (ad|at|aḏ|az|aṯ|ar|as|aš|aṣ|aḍ|aṭ|aẓ|an)-/g, " al-");
+  text = text.replace(/-(ad|at|aḏ|az|aṯ|ar|as|aš|aṣ|aḍ|aṭ|aẓ|an)-/g, "-al-");
+  applyReverse(GENERIC_ARTICLE_CONTRACTION);
+  applyReverse(COMBI_LONG_VOWELS);
+  applyReverse(PREPOSITIONS_AL);
+  applyReverse(POST_PROCESSING_CORRECTIONS);
+  const reversibleSpecials = SPECIALS.filter(([k]) => k !== "á");
+  applyReverse(reversibleSpecials);
+  applyReverse(COMBI_AIU);
+  applyReverse(FINAL_ADJUSTMENTS);
+  applyReverse(SPECIAL_WORDS);
+  applyReverse(ALPHABET_MAPPING);
+  text = text.replace(/ (Ibn|ibn) /g, " ibn ");
+  text = text.replace(/^ (ibn|Ibn) /g, " Ibn ");
+  text = text.replace(/, (ibn|Ibn) /g, ", Ibn ");
+  text = text.replace(/(?<!\swa)a(?![a-z\u00C0-\u017F\u1E00-\u1EFF\-])/gi, "ah");
+  return text.trim();
+};
+
+=========================================
+FILE: /utils/persianConverter.ts
+=========================================
+import { PERSIAN_DIN_TO_LOC, PERSIAN_LOC_TO_DIN } from './persianMappings';
+import { SPECIAL_WORDS, FINAL_ADJUSTMENTS, ARTICLE_AL, COMBI_LONG_VOWELS, SUN_LETTERS_MAP } from './mappings';
+
+export const convertPersianDinToLoc = (input: string): string => {
+  if (!input) return "";
+  let text = " " + input.trim() + " ";
+  text = text.replace(/-nāma(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, "'nāmah");
+  text = text.replace(/(\w)a-i(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, "$1ah-'i");
+  text = text.replace(/(\w)a(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, '$1ah');
+  const applyReverse = (mapping: string[][]) => { [...mapping].reverse().forEach(([locKey, dinValue]) => { text = text.split(dinValue).join(locKey); }); };
+  applyReverse(FINAL_ADJUSTMENTS);
+  applyReverse(SPECIAL_WORDS);
+  applyReverse(ARTICLE_AL);
+  text = text.replace(/ (ad|at|aḏ|az|aṯ|ar|as|aš|aṣ|aḍ|aṭ|aẓ|an)-/g, " al-");
+  text = text.replace(/-(ad|at|aḏ|az|aṯ|ar|as|aš|aṣ|aḍ|aṭ|aẓ|an)-/g, "-al-");
+  applyReverse(COMBI_LONG_VOWELS);
+  PERSIAN_DIN_TO_LOC.forEach(([key, value]) => { text = text.split(key).join(value); });
+  text = text.replace(/ (Ibn|ibn) /g, " ibn ");
+  text = text.replace(/^ (ibn|Ibn) /g, " Ibn ");
+  text = text.replace(/, (ibn|Ibn) /g, ", Ibn ");
+  return text.trim();
+};
+
+export const convertPersianLocToDin = (input: string): string => {
+  if (!input) return "";
+  let text = " " + input.trim() + " ";
+  text = text.replace(/['’]nāmah(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, '-nāma');
+  text = text.replace(/ah-[']?i(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, 'a-i');
+  text = text.replace(/ah(?![a-z\u00C0-\u017F\u1E00-\u1EFF])/g, 'a');
+  PERSIAN_LOC_TO_DIN.forEach(([key, value]) => {
+    if (key === "aw" || key === "ay" || key === "Aw" || key === "Ay") {
+      const regex = new RegExp(`${key}(?![a\u0101i\u012Bu\u016B\u00E1])`, 'g');
+      text = text.replace(regex, value);
+    } else {
+      text = text.split(key).join(value);
+    }
+  });
+  COMBI_LONG_VOWELS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  FINAL_ADJUSTMENTS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  SPECIAL_WORDS.forEach(([key, value]) => { text = text.split(key).join(value); });
+  ARTICLE_AL.forEach(([key, value]) => { text = text.split(key).join(value); });
+  if (text.endsWith(" al- ")) {
+    const firstWordMatch = text.trim().match(/^[^\s,]+/);
+    if (firstWordMatch) {
+      let firstChar = firstWordMatch[0][0].toLowerCase();
+      const twoChars = firstWordMatch[0].substring(0, 2).toLowerCase();
+      const mapping = PERSIAN_LOC_TO_DIN.find(([k]) => k === twoChars || k === firstChar);
+      if (mapping) { firstChar = mapping[1][0]; }
+      const assimilation = SUN_LETTERS_MAP[firstChar];
+      if (assimilation) { text = text.substring(0, text.length - 5) + " " + assimilation + " "; }
+    }
+  }
+  return text.trim();
+};
+
+=========================================
+FILE: /utils/persianMappings.ts
+=========================================
+export const PERSIAN_DIN_TO_LOC = [
+  ["w", "v"], ["ww", "vv"], ["W", "V"], ["WW", "VV"],
+  ["au", "aw"], ["ai", "ay"], ["Au", "Aw"], ["Ai", "Ay"],
+  ["ṯ", "s̠"], ["ǧ", "j"], ["č", "ch"], ["ḫ", "kh"], ["ḏ", "z̠"], ["ž", "zh"], ["š", "sh"], ["ḍ", "z̤"], ["ʿ", "‘"], ["ġ", "gh"], ["ʾ", "’"],
+  ["Ṯ", "S̠"], ["Ǧ", "J"], ["Č", "Ch"], ["Ḫ", "Kh"], ["Ḏ", "Z̠"], ["Ž", "Zh"], ["Š", "Sh"], ["Ḍ", "Z̤"], ["Ġ", "Gh"]
+];
+
+export const PERSIAN_LOC_TO_DIN = [
+  ["aw", "au"], ["ay", "ai"], ["Aw", "Au"], ["Ay", "Ai"],
+  ["vv", "ww"], ["VV", "WW"], ["s̠", "ṯ"], ["ch", "č"], ["kh", "ḫ"], ["z̠", "ḏ"], ["zh", "ž"], ["sh", "š"], ["z̤", "ḍ"], ["gh", "ġ"], ["j", "ǧ"], ["J", "Ǧ"], ["‘", "ʿ"], ["v", "w"], ["’", "ʾ"],
+  ["S̠", "Ṯ"], ["Ch", "Č"], ["Kh", "Ḫ"], ["Z̠", "Ḏ"], ["Zh", "Ž"], ["Sh", "Š"], ["Z̤", "Ḍ"], ["Gh", "Ġ"], ["V", "W"],
+  ["á", "ā"]
+];
+
+=========================================
+FILE: /utils/arabicConverter.ts
+=========================================
+const TRANS_TO_ARABIC_MAP: Record<string, string> = {
+  'b': 'ب', 't': 'ت', 'ṯ': 'ث', 'ǧ': 'ج', 'ḥ': 'ح', 'ḫ': 'خ', 'd': 'د', 'ḏ': 'ذ', 'r': 'ر', 'z': 'ز', 's': 'س', 'š': 'ش', 'ṣ': 'ص', 'ḍ': 'ض', 'ṭ': 'ط', 'ẓ': 'ظ', 'ʿ': 'ع', 'ġ': 'غ', 'f': 'ف', 'q': 'ق', 'k': 'ك', 'l': 'ل', 'm': 'م', 'n': 'ن', 'h': 'ه', 'w': 'و', 'y': 'ي', 'ʾ': 'ء', 'ā': 'ا', 'ū': 'و', 'ī': 'ي', 'th': 'ث', 'kh': 'خ', 'dh': 'ذ', 'sh': 'ش', 'gh': 'غ'
+};
+const PUNCTUATION_MAP: Record<string, string> = { ',': '،', ';': '؛', '?': '؟' };
+export const convertToArabic = (trans: string): string => {
+  if (!trans) return "";
+  let text = trans.trim().toLowerCase();
+  text = text.replace(/allāh/g, " الله");
+  text = text.replace(/(^|\s|-)a[tṯdḏrzsšṣḍṭẓln]-(?=[^\s])/g, "$1 ال");
+  text = text.replace(/(^|\s|-)al-(?=[^\s])/g, "$1 ال");
+  text = text.replace(/ a[tṯdḏrzsšṣḍṭẓln]- $/g, " الـ ");
+  text = text.replace(/ al- $/g, " الـ ");
+  text = text.replace(/ibn-?/g, " ابن ");
+  text = text.replace(/bint-?/g, " بنت ");
+  text = text.replace(/abū-?/g, " أبو ");
+  text = text.replace(/ʿabd-?/g, " عبد ");
+  text = text.replace(/(^|\s)([aiu])/g, "$1ا");
+  let result = "";
+  for (let i = 0; i < text.length; i++) {
+    if (i < text.length - 1) {
+      const digraph = text.substring(i, i + 2);
+      if (TRANS_TO_ARABIC_MAP[digraph]) { result += TRANS_TO_ARABIC_MAP[digraph]; i++; continue; }
+    }
+    const char = text[i];
+    if (TRANS_TO_ARABIC_MAP[char]) { result += TRANS_TO_ARABIC_MAP[char]; }
+    else if (PUNCTUATION_MAP[char]) { result += PUNCTUATION_MAP[char]; }
+    else if (/\s/.test(char) || char === '-' || char === ',' || char === '.') { result += char; }
+  }
+  return result.replace(/\s+/g, ' ').replace(/ال /g, 'ال').replace(/ - /g, '-').trim();
+};
+
+=========================================
+FILE: /utils/scriptGenerator.ts
+=========================================
+import { ALPHABET_MAPPING, SPECIAL_WORDS, COMBI_AIU, SPECIALS, PREPOSITIONS_AL, COMBI_LONG_VOWELS, ARTICLE_AL, FINAL_ADJUSTMENTS, GENERIC_ARTICLE_CONTRACTION, POST_PROCESSING_CORRECTIONS, SUN_LETTERS_MAP } from './mappings';
+const entriesToPythonDict = (name: string, entries: string[][], reverse: boolean = false) => {
+  let py = `${name} = {\n`;
+  entries.forEach(([k, v], index) => {
+    const dictKey = reverse ? v : k;
+    const dictVal = reverse ? k : v;
+    py += `    "${dictKey.replace(/'/g, "\\'")}": "${dictVal.replace(/'/g, "\\'")}"${index < entries.length - 1 ? ',' : ''}\n`;
+  });
+  py += "}\n\nfor key, value in " + name + ".items():\n    s1 = s1.replace(key, value)\n\n";
+  return py;
+};
+export const generatePythonScript = () => {
+  return `import re\ns0 = input("Bitte Ihren Text in Format von LOC eintragen!\\n ")\ns0 = " " + s0 + " "\ns1 = s0\n${entriesToPythonDict('dict_alphabet', ALPHABET_MAPPING)}\n${entriesToPythonDict('dict_special_words', SPECIAL_WORDS)}\ns1 = re.sub(r'(\\S+)\\s+Allāh', r'\\1allāh', s1)\n${entriesToPythonDict('dict_specific_compounds', FINAL_ADJUSTMENTS)}\nsun_letters = ${JSON.stringify(SUN_LETTERS_MAP)}\nif s1.endswith(" al- "):\n    trimmed = s1.strip()\n    first_word = re.split(r'[\\s,]+', trimmed)[0]\n    if first_word:\n        first_char = first_word[0].lower()\n        if first_char in sun_letters: s1 = s1[:-5] + " " + sun_letters[first_char] + " "\n${entriesToPythonDict('dict_combi_aiu', COMBI_AIU)}\n${entriesToPythonDict('dict_specials', SPECIALS)}\n${entriesToPythonDict('dict_post_processing', POST_PROCESSING_CORRECTIONS)}\n${entriesToPythonDict('dict_al', PREPOSITIONS_AL)}\n${entriesToPythonDict('dict_combi_aiu_long', COMBI_LONG_VOWELS)}\n${entriesToPythonDict('dict_generic_vowels', GENERIC_ARTICLE_CONTRACTION)}\n${entriesToPythonDict('dict_article_al', ARTICLE_AL)}\ns1 = s1.strip()\nprint("-" * 30 + "\\nDie DIN-Umschrift:\\n " + str(s1))`;
+};
+export const generateReversePythonScript = () => {
+  return `import re\ns0 = input("Bitte Ihren Text in Format von DIN eintragen!\\n ")\ns0 = " " + s0 + " "\ns1 = s0\ns1 = re.sub(r'(\\S+)allāh', r'\\1 Allāh', s1)\n${entriesToPythonDict('dict_article_al_rev', ARTICLE_AL, true)}\n${entriesToPythonDict('dict_generic_vowels_rev', GENERIC_ARTICLE_CONTRACTION, true)}\n${entriesToPythonDict('dict_combi_aiu_long_rev', COMBI_LONG_VOWELS, true)}\n${entriesToPythonDict('dict_al_rev', PREPOSITIONS_AL, true)}\n${entriesToPythonDict('dict_post_processing_rev', POST_PROCESSING_CORRECTIONS, true)}\n${entriesToPythonDict('dict_specials_rev', SPECIALS.filter(([k]) => k !== "á"), true)}\n${entriesToPythonDict('dict_combi_aiu_rev', COMBI_AIU, true)}\n${entriesToPythonDict('dict_specific_compounds_rev', FINAL_ADJUSTMENTS, true)}\n${entriesToPythonDict('dict_special_words_rev', SPECIAL_WORDS, true)}\n${entriesToPythonDict('dict_alphabet_rev', ALPHABET_MAPPING, true)}\ns1 = s1.strip()\nprint("-" * 30 + "\\nDie LOC-Umschrift:\\n " + str(s1))`;
+};
+
+=========================================
+END OF EXPORT
+=========================================
